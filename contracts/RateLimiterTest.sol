@@ -4,11 +4,13 @@ pragma solidity ^0.8.0;
 import "./RateLimiter.sol";
 
 contract RateLimiterTest is RateLimiter {
-
     uint256 public timestamp;
 
-    constructor (uint256 bins, uint256 binDuration, uint256 limit) RateLimiter(bins, binDuration, limit) {
-    }
+    constructor(
+        uint256 bins,
+        uint256 binDuration,
+        uint256 limit
+    ) RateLimiter(bins, binDuration, limit) {}
 
     function setRateLimit(uint256 newLimit) public {
         _setRateLimit(newLimit);
@@ -31,6 +33,6 @@ contract RateLimiterTest is RateLimiter {
     }
 
     function getRate() public view returns (uint256) {
-        return _rate; 
+        return _rate;
     }
 }

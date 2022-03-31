@@ -2,15 +2,15 @@
 pragma solidity ^0.8.0;
 
 contract RateLimiter {
-    uint256 constant public RATE_UNIT = 1e18;
-    uint256 immutable public RATE_BIN_DURATION;
-    uint256 immutable public RATE_BINS;
-    uint256 constant public RATE_BIN_BYTES = 4;
-    uint256 constant public RATE_BIN_MAX_VALUE = (1 << (RATE_BIN_BYTES * 8)) - 1;
-    uint256 constant public RATE_BIN_MASK = (1 << (RATE_BIN_BYTES * 8)) - 1;
-    uint256 constant public RATE_BINS_PER_SLOT = 32 / RATE_BIN_BYTES;
+    uint256 public constant RATE_UNIT = 1e18;
+    uint256 public immutable RATE_BIN_DURATION;
+    uint256 public immutable RATE_BINS;
+    uint256 public constant RATE_BIN_BYTES = 4;
+    uint256 public constant RATE_BIN_MAX_VALUE = (1 << (RATE_BIN_BYTES * 8)) - 1;
+    uint256 public constant RATE_BIN_MASK = (1 << (RATE_BIN_BYTES * 8)) - 1;
+    uint256 public constant RATE_BINS_PER_SLOT = 32 / RATE_BIN_BYTES;
 
-    mapping (uint256 => uint256) private _rateSlots;
+    mapping(uint256 => uint256) private _rateSlots;
     uint256 private _lastBinIdx;
     uint256 internal _limit;
     uint256 internal _rate;
@@ -20,7 +20,11 @@ contract RateLimiter {
         uint256 slotValue;
     }
 
-    constructor (uint256 bins, uint256 binDuration, uint256 limit) {
+    constructor(
+        uint256 bins,
+        uint256 binDuration,
+        uint256 limit
+    ) {
         RATE_BINS = bins;
         RATE_BIN_DURATION = binDuration;
         _limit = limit;
@@ -54,14 +58,18 @@ contract RateLimiter {
     function _getBinValue(BinCache memory cache, uint256 binIdx) internal returns (uint256) {
         uint256 binIdxInWindow = binIdx % RATE_BINS;
         uint256 slotIdx = binIdxInWindow / RATE_BINS_PER_SLOT;
-        _flushIfEvicted(cache, slotIdx);        
+        _flushIfEvicted(cache, slotIdx);
 
         uint256 idxInSlot = binIdxInWindow % RATE_BINS_PER_SLOT;
-        return cache.slotValue >> (idxInSlot * RATE_BIN_BYTES * 8) & RATE_BIN_MASK;
+        return (cache.slotValue >> (idxInSlot * RATE_BIN_BYTES * 8)) & RATE_BIN_MASK;
     }
 
     // Set a bin value and write only to cache if hit.  If not hit, evict the cache, and write to a new cache loaded from storage.
-    function _setBinValue(BinCache memory cache, uint256 binIdx, uint256 value) internal returns (uint256) {
+    function _setBinValue(
+        BinCache memory cache,
+        uint256 binIdx,
+        uint256 value
+    ) internal returns (uint256) {
         require(value <= RATE_BIN_MAX_VALUE, "value too big");
         uint256 binIdxInWindow = binIdx % RATE_BINS;
         uint256 slotIdx = binIdxInWindow / RATE_BINS_PER_SLOT;
@@ -105,7 +113,7 @@ contract RateLimiter {
         uint256 rate = _rate;
 
         if (binIdx != _lastBinIdx) {
-            for (uint256 idx = _lastBinIdx + 1; idx <= binIdx; idx ++) {
+            for (uint256 idx = _lastBinIdx + 1; idx <= binIdx; idx++) {
                 uint256 oldValue = _setBinValue(cache, idx, 0);
                 rate -= oldValue;
             }

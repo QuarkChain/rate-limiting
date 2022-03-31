@@ -5,21 +5,21 @@ const { ethers } = require("hardhat");
 var ToBig = (x) => ethers.BigNumber.from(x);
 
 describe("RateLimiter Test", function () {
-    it("simple", async function () {
-        const RateLimiterFactory = await ethers.getContractFactory("RateLimiterTest");
-        const rl = await RateLimiterFactory.deploy(4, 3600, 100);  // 4 hours with 1 hour per bin
-        await rl.deployed();
+  it("simple", async function () {
+    const RateLimiterFactory = await ethers.getContractFactory("RateLimiterTest");
+    const rl = await RateLimiterFactory.deploy(4, 3600, 100); // 4 hours with 1 hour per bin
+    await rl.deployed();
 
-        await rl.consume("10000000000000000000"); // 10
-        expect(await rl.getRate()).to.equal("10");
+    await rl.consume("10000000000000000000"); // 10
+    expect(await rl.getRate()).to.equal("10");
 
-        await rl.consume("10000000000000000000"); // 10
-        expect(await rl.getRate()).to.equal("20");
-    });
+    await rl.consume("10000000000000000000"); // 10
+    expect(await rl.getRate()).to.equal("20");
+  });
 
   it("complex", async function () {
     const RateLimiterFactory = await ethers.getContractFactory("RateLimiterTest");
-    const rl = await RateLimiterFactory.deploy(4, 3600, 100);  // 4 hours with 1 hour per bin
+    const rl = await RateLimiterFactory.deploy(4, 3600, 100); // 4 hours with 1 hour per bin
     await rl.deployed();
 
     await rl.consume("10000000000000000000"); // 10
@@ -52,7 +52,7 @@ describe("RateLimiter Test", function () {
 
   it("expire one", async function () {
     const RateLimiterFactory = await ethers.getContractFactory("RateLimiterTest");
-    const rl = await RateLimiterFactory.deploy(4, 3600, 100);  // 4 hours with 1 hour per bin
+    const rl = await RateLimiterFactory.deploy(4, 3600, 100); // 4 hours with 1 hour per bin
     await rl.deployed();
 
     await rl.consume("60000000000000000000"); // 60
@@ -65,7 +65,7 @@ describe("RateLimiter Test", function () {
 
   it("expire multiple", async function () {
     const RateLimiterFactory = await ethers.getContractFactory("RateLimiterTest");
-    const rl = await RateLimiterFactory.deploy(4, 3600, 100);  // 4 hours with 1 hour per bin
+    const rl = await RateLimiterFactory.deploy(4, 3600, 100); // 4 hours with 1 hour per bin
     await rl.deployed();
 
     await rl.consume("60000000000000000000"); // 60
@@ -89,7 +89,7 @@ describe("RateLimiter Test", function () {
 
   it("expire all", async function () {
     const RateLimiterFactory = await ethers.getContractFactory("RateLimiterTest");
-    const rl = await RateLimiterFactory.deploy(4, 3600, 100);  // 4 hours with 1 hour per bin
+    const rl = await RateLimiterFactory.deploy(4, 3600, 100); // 4 hours with 1 hour per bin
     await rl.deployed();
 
     await rl.consume("10000000000000000000"); // 10
