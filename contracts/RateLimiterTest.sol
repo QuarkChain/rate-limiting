@@ -7,8 +7,7 @@ contract RateLimiterTest is RateLimiter {
 
     uint256 public timestamp;
 
-    constructor (uint256 limit) {
-        setRateLimit(limit);
+    constructor (uint256 bins, uint256 binDuration, uint256 limit) RateLimiter(bins, binDuration, limit) {
     }
 
     function setRateLimit(uint256 newLimit) public {

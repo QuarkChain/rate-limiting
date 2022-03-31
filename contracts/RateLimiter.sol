@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 contract RateLimiter {
     uint256 constant public RATE_UNIT = 1e18;
-    uint256 constant public RATE_BIN_DURATION = 3600;
-    uint256 constant public RATE_BINS = 24;
-    uint256 constant public RATE_DURATION = RATE_BINS * RATE_BIN_DURATION;
+    uint256 immutable public RATE_BIN_DURATION;
+    uint256 immutable public RATE_BINS;
+    uint256 immutable public RATE_DURATION;
     uint256 constant public RATE_BIN_BYTES = 4;
     uint256 constant public RATE_BIN_MAX_VALUE = (1 << (RATE_BIN_BYTES * 8)) - 1;
     uint256 constant public RATE_BIN_MASK = (1 << (RATE_BIN_BYTES * 8)) - 1;
@@ -21,9 +21,16 @@ contract RateLimiter {
         uint256 slotValue;
     }
 
+    constructor (uint256 bins, uint256 binDuration, uint256 limit) {
+        RATE_BINS = bins;
+        RATE_BIN_DURATION = binDuration;
+        RATE_DURATION = RATE_BINS * RATE_BIN_DURATION;
+        _limit = limit;
+    }
+
     // Get a new cache from a binIdx
     function _getCache(uint256 binIdx) internal view returns (BinCache memory) {
-        uint256 slotIdx = binIdx / RATE_BINS_PER_SLOT;
+        uint256 slotIdx = (binIdx % RATE_BINS) / RATE_BINS_PER_SLOT;
 
         return BinCache({slotIdx: slotIdx, slotValue: _rateSlots[slotIdx]});
     }
@@ -47,20 +54,22 @@ contract RateLimiter {
 
     // Get a bin value and use cache if hit.  If not hit, evict the cache, and read a new one from storage.
     function _getBinValue(BinCache memory cache, uint256 binIdx) internal returns (uint256) {
-        uint256 slotIdx = binIdx / RATE_BINS_PER_SLOT;
+        uint256 binIdxInWindow = binIdx % RATE_BINS;
+        uint256 slotIdx = binIdxInWindow / RATE_BINS_PER_SLOT;
         _flushIfEvicted(cache, slotIdx);        
 
-        uint256 idxInSlot = binIdx % RATE_BINS_PER_SLOT;
+        uint256 idxInSlot = binIdxInWindow % RATE_BINS_PER_SLOT;
         return cache.slotValue >> (idxInSlot * RATE_BIN_BYTES * 8) & RATE_BIN_MASK;
     }
 
     // Set a bin value and write only to cache if hit.  If not hit, evict the cache, and write to a new cache loaded from storage.
     function _setBinValue(BinCache memory cache, uint256 binIdx, uint256 value) internal returns (uint256) {
         require(value <= RATE_BIN_MAX_VALUE, "value too big");
-        uint256 slotIdx = binIdx / RATE_BINS_PER_SLOT;
+        uint256 binIdxInWindow = binIdx % RATE_BINS;
+        uint256 slotIdx = binIdxInWindow / RATE_BINS_PER_SLOT;
         _flushIfEvicted(cache, slotIdx);
 
-        uint256 idxInSlot = binIdx % RATE_BINS_PER_SLOT;
+        uint256 idxInSlot = binIdxInWindow % RATE_BINS_PER_SLOT;
         uint256 off = idxInSlot * RATE_BIN_BYTES * 8;
         uint256 oldValue = (cache.slotValue >> off) & RATE_BIN_MASK;
         cache.slotValue = (cache.slotValue & (~(RATE_BIN_MASK << off))) | (value << off);
@@ -85,24 +94,23 @@ contract RateLimiter {
 
     // Check if consuming amount will exceed rate limit.  Update rate accordingly.
     function _checkRateLimit(uint256 amount) internal {
-        uint256 binIdx = (_getTimestamp() % RATE_DURATION) / RATE_BIN_DURATION;
+        uint256 binIdx = _getTimestamp() / RATE_BIN_DURATION;
         uint256 amountInUnit = (amount + RATE_UNIT - 1) / RATE_UNIT;
+
+        // reset rate if all existing rate bins are expired
+        if (binIdx - _lastBinIdx >= RATE_BINS) {
+            _resetRate();
+            _lastBinIdx = binIdx;
+        }
+
         BinCache memory cache = _getCache(_lastBinIdx);
-
         if (binIdx != _lastBinIdx) {
-            uint256 idx = _lastBinIdx;
             uint256 currentRate = _rate;
-            while (idx != binIdx) {
-                // move to next idx
-                idx = idx + 1;
-                if (idx == RATE_BINS) {
-                    idx = 0;
-                }
-
+            for (uint256 idx = _lastBinIdx + 1; idx != binIdx; idx ++) {
                 uint256 oldValue = _setBinValue(cache, idx, 0);
                 currentRate -= oldValue;
             }
-            _lastBinIdx = idx;
+            _lastBinIdx = binIdx;
             _rate = currentRate;
         }
 
