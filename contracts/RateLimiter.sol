@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract RateLimter {
+contract RateLimiter {
     uint256 constant public RATE_UNIT = 1e18;
     uint256 constant public RATE_BIN_DURATION = 3600;
     uint256 constant public RATE_BINS = 24;
@@ -11,10 +11,10 @@ contract RateLimter {
     uint256 constant public RATE_BIN_MASK = (1 << RATE_BIN_BYTES) - 1;
     uint256 constant public RATE_BINS_PER_SLOT = 32 / RATE_BIN_BYTES;
 
-    mapping (uint256 => uint256) private rateSlots;
-    uint256 private lastBinIdx;
-    uint256 private limit;
-    uint256 private rate;
+    mapping (uint256 => uint256) private _rateSlots;
+    uint256 private _lastBinIdx;
+    uint256 internal _limit;
+    uint256 internal _rate;
 
     struct BinCache {
         uint256 slotIdx;
@@ -22,43 +22,43 @@ contract RateLimter {
     }
 
     // Get a new cache from a binIdx
-    function getCache(uint256 binIdx) internal view returns (BinCache memory) {
+    function _getCache(uint256 binIdx) internal view returns (BinCache memory) {
         uint256 slotIdx = binIdx / RATE_BINS_PER_SLOT;
 
-        return BinCache({slotIdx: slotIdx, slotValue: rateSlots[slotIdx]});
+        return BinCache({slotIdx: slotIdx, slotValue: _rateSlots[slotIdx]});
     }
 
     // Commit the cache to storage.
-    function commitCache(BinCache memory cache) internal {
-        rateSlots[cache.slotIdx] = cache.slotValue;
+    function _commitCache(BinCache memory cache) internal {
+        _rateSlots[cache.slotIdx] = cache.slotValue;
     }
 
     // Flush the cache if the cache is evicted.
-    function flushIfEvicted(BinCache memory cache, uint256 newSlotIdx) internal {
+    function _flushIfEvicted(BinCache memory cache, uint256 newSlotIdx) internal {
         if (newSlotIdx != cache.slotIdx) {
             // commit to storage
-            commitCache(cache);
+            _commitCache(cache);
 
             // load from storage
             cache.slotIdx = newSlotIdx;
-            cache.slotValue = rateSlots[newSlotIdx];
+            cache.slotValue = _rateSlots[newSlotIdx];
         }
     }
 
     // Get a bin value and use cache if hit.  If not hit, evict the cache, and read a new one from storage.
-    function getBinValue(BinCache memory cache, uint256 binIdx) internal returns (uint256) {
+    function _getBinValue(BinCache memory cache, uint256 binIdx) internal returns (uint256) {
         uint256 slotIdx = binIdx / RATE_BINS_PER_SLOT;
-        flushIfEvicted(cache, slotIdx);        
+        _flushIfEvicted(cache, slotIdx);        
 
         uint256 idxInSlot = binIdx % RATE_BINS_PER_SLOT;
         return cache.slotValue >> (idxInSlot * RATE_BIN_BYTES * 8) & RATE_BIN_MASK;
     }
 
     // Set a bin value and write only to cache if hit.  If not hit, evict the cache, and write to a new cache loaded from storage.
-    function setBinValue(BinCache memory cache, uint256 binIdx, uint256 value) internal returns (uint256) {
+    function _setBinValue(BinCache memory cache, uint256 binIdx, uint256 value) internal returns (uint256) {
         require(value <= RATE_BIN_MAX_VALUE, "value too big");
         uint256 slotIdx = binIdx / RATE_BINS_PER_SLOT;
-        flushIfEvicted(cache, slotIdx);
+        _flushIfEvicted(cache, slotIdx);
 
         uint256 idxInSlot = binIdx % RATE_BINS_PER_SLOT;
         uint256 off = idxInSlot * RATE_BIN_BYTES * 8;
@@ -68,30 +68,30 @@ contract RateLimter {
     }
 
     // Overridable for testing.
-    function getTimestamp() internal virtual returns (uint256) {
+    function _getTimestamp() internal virtual returns (uint256) {
         return block.timestamp;
     }
 
-    function setRateLimit(uint256 newLimit) internal {
-        limit = newLimit;
+    function _setRateLimit(uint256 newLimit) internal {
+        _limit = newLimit;
     }
 
-    function resetRate() internal {
+    function _resetRate() internal {
         for (uint256 i = 0; i < (RATE_BINS + RATE_BINS_PER_SLOT - 1) / RATE_BINS_PER_SLOT; i++) {
-            rateSlots[i] = 0;
+            _rateSlots[i] = 0;
         }
-        rate = 0;
+        _rate = 0;
     }
 
     // Check if consuming amount will exceed rate limit.  Update rate accordingly.
-    function checkRateLimit(uint256 amount) internal {
+    function _checkRateLimit(uint256 amount) internal {
         uint256 binIdx = (block.timestamp % RATE_DURATION) / RATE_BIN_DURATION;
         uint256 amountInUnit = (amount + RATE_UNIT - 1) / RATE_UNIT;
-        BinCache memory cache = getCache(lastBinIdx);
+        BinCache memory cache = _getCache(_lastBinIdx);
 
-        if (binIdx != lastBinIdx) {
-            uint256 idx = lastBinIdx;
-            uint256 currentRate = rate;
+        if (binIdx != _lastBinIdx) {
+            uint256 idx = _lastBinIdx;
+            uint256 currentRate = _rate;
             while (idx != binIdx) {
                 // move to next idx
                 idx = idx + 1;
@@ -99,16 +99,16 @@ contract RateLimter {
                     idx = 0;
                 }
 
-                uint256 oldValue = setBinValue(cache, idx, 0);
+                uint256 oldValue = _setBinValue(cache, idx, 0);
                 currentRate -= oldValue;
             }
-            lastBinIdx = idx;
-            rate = currentRate;
+            _lastBinIdx = idx;
+            _rate = currentRate;
         }
 
-        require(rate + amountInUnit <= limit, "limit exceeded");
-        rate += amountInUnit;
-        setBinValue(cache, binIdx, getBinValue(cache, binIdx) + amountInUnit);
-        commitCache(cache);
+        require(_rate + amountInUnit <= _limit, "limit exceeded");
+        _rate += amountInUnit;
+        _setBinValue(cache, binIdx, _getBinValue(cache, binIdx) + amountInUnit);
+        _commitCache(cache);
     }
 }
