@@ -5,7 +5,6 @@ contract RateLimiter {
     uint256 constant public RATE_UNIT = 1e18;
     uint256 immutable public RATE_BIN_DURATION;
     uint256 immutable public RATE_BINS;
-    uint256 immutable public RATE_DURATION;
     uint256 constant public RATE_BIN_BYTES = 4;
     uint256 constant public RATE_BIN_MAX_VALUE = (1 << (RATE_BIN_BYTES * 8)) - 1;
     uint256 constant public RATE_BIN_MASK = (1 << (RATE_BIN_BYTES * 8)) - 1;
@@ -24,7 +23,6 @@ contract RateLimiter {
     constructor (uint256 bins, uint256 binDuration, uint256 limit) {
         RATE_BINS = bins;
         RATE_BIN_DURATION = binDuration;
-        RATE_DURATION = RATE_BINS * RATE_BIN_DURATION;
         _limit = limit;
     }
 
