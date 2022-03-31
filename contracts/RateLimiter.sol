@@ -104,18 +104,19 @@ contract RateLimiter {
         }
 
         BinCache memory cache = _getCache(_lastBinIdx);
+        uint256 rate = _rate;
+
         if (binIdx != _lastBinIdx) {
-            uint256 currentRate = _rate;
-            for (uint256 idx = _lastBinIdx + 1; idx != binIdx; idx ++) {
+            for (uint256 idx = _lastBinIdx + 1; idx <= binIdx; idx ++) {
                 uint256 oldValue = _setBinValue(cache, idx, 0);
-                currentRate -= oldValue;
+                rate -= oldValue;
             }
             _lastBinIdx = binIdx;
-            _rate = currentRate;
         }
 
-        require(_rate + amountInUnit <= _limit, "limit exceeded");
-        _rate += amountInUnit;
+        rate += amountInUnit;
+        require(rate <= _limit, "limit exceeded");
+        _rate = rate;
         _setBinValue(cache, binIdx, _getBinValue(cache, binIdx) + amountInUnit);
         _commitCache(cache);
     }
