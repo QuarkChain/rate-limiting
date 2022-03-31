@@ -7,8 +7,8 @@ contract RateLimiter {
     uint256 constant public RATE_BINS = 24;
     uint256 constant public RATE_DURATION = RATE_BINS * RATE_BIN_DURATION;
     uint256 constant public RATE_BIN_BYTES = 4;
-    uint256 constant public RATE_BIN_MAX_VALUE = (1 << RATE_BIN_BYTES) - 1;
-    uint256 constant public RATE_BIN_MASK = (1 << RATE_BIN_BYTES) - 1;
+    uint256 constant public RATE_BIN_MAX_VALUE = (1 << (RATE_BIN_BYTES * 8)) - 1;
+    uint256 constant public RATE_BIN_MASK = (1 << (RATE_BIN_BYTES * 8)) - 1;
     uint256 constant public RATE_BINS_PER_SLOT = 32 / RATE_BIN_BYTES;
 
     mapping (uint256 => uint256) private _rateSlots;
@@ -85,7 +85,7 @@ contract RateLimiter {
 
     // Check if consuming amount will exceed rate limit.  Update rate accordingly.
     function _checkRateLimit(uint256 amount) internal {
-        uint256 binIdx = (block.timestamp % RATE_DURATION) / RATE_BIN_DURATION;
+        uint256 binIdx = (_getTimestamp() % RATE_DURATION) / RATE_BIN_DURATION;
         uint256 amountInUnit = (amount + RATE_UNIT - 1) / RATE_UNIT;
         BinCache memory cache = _getCache(_lastBinIdx);
 
