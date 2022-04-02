@@ -19,8 +19,13 @@ This repo implements a fine-time-granularity rate limiter with sliding window:
 As a result, if the same attack strategy is employed, the attacker has to wait 23 hours to withdraw the next limit amount.
 
 # Methods Provided by the Contract
-The contract provides a constructor to specify # of bins, bin duration, and the limit.  It further provides the following internal methods:
+The contract provides a constructor to specify
+- \# of bins;
+- bin duration;
+- \# of bytes in a bin (maximum value of the bin); and
+- the limit.
 
+It further provides the following internal methods:
 - _checkRateLimit(amount).  Revert if the rate exceeds the limit, otherwise, update the rate accordingly.
 - _resetRate().  Reset the rate to zero.
 - _setRateLimit(limit).  Set the new limit.
