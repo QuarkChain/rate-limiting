@@ -16,7 +16,7 @@ This repo implements a fine-time-granularity rate limiter with sliding window:
 - Bin duration is duration of the bin (e.g., 1 hour)
 - \# of bins (e.g., 24, and thus 24 hours to calculate rate)
 
-As a result, the actual limit in 24 hours is about 1 + 1/24 ~ 1.041 if the same attack strategy is employed.
+As a result, if the same attack strategy is employed, the attacker has to wait 23 hours to withdraw the next limit amount.
 
 # Methods Provided by the Contract
 The contract provides a constructor to specify # of bins, bin duration, and the limit.  It further provides the following internal methods:
