@@ -7,7 +7,7 @@ This repo provides an on-chain rate-limiting contract.  If the frequency of some
 An example of the application is in bridge, where a rate limiter is employed to limit the withdrawal/unlock amount to a specific value (e.g., $20M per day).  If the amount withdrawal in recent 24 hours exceeds the limit, the withdrawal will be suspended.  This will leave a time room for the operator to check the healthy status of the bridge and reset the rate if everything is fine.  With the rate limit, we could significantly reduce the loss of the one-time-withdraw-all  bridge attacks that are found in Wormhole/Ronin bridges.
 
 # Comparison With Existing Implementation
-Consensys has implemented a simple rate-limiting contract https://consensys.github.io/smart-contract-best-practices/development-recommendations/precautions/rate-limiting/.  However, the time granularity of rate calculation is the same as rate duartion (e.g., 24 hours), this means that the actual limit may be twice as the limit of the contract.  For example, an attacker can
+Consensys has implemented a simple rate-limiting contract https://consensys.github.io/smart-contract-best-practices/development-recommendations/precautions/rate-limiting/.  However, the time granularity of rate calculation is the same as rate duartion (e.g., 24 hours), this means that the actual limit may be **twice of the limit** specified by the contract.  For example, an attacker can
 - withdraw the limit amount at the end of a limiting period (suppose the pre-withdrawal amount is low in the period); and
 - withdraw the limit amount at the beginning of the next period.
 
