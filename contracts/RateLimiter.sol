@@ -58,17 +58,6 @@ contract RateLimiter {
         }
     }
 
-    // Get a bin value and use cache if hit.  If not hit, evict the cache, and read a new one from storage.
-    // The cache must contain valid values.
-    function _getBinValue(SlotCache memory cache, uint256 binIdx) internal returns (uint256) {
-        uint256 binIdxInWindow = binIdx % RATE_BINS;
-        uint256 slotIdx = binIdxInWindow / RATE_BINS_PER_SLOT;
-        _flushIfEvicted(cache, slotIdx);
-
-        uint256 idxInSlot = binIdxInWindow % RATE_BINS_PER_SLOT;
-        return (cache.slotValue >> (idxInSlot * RATE_BIN_BYTES * 8)) & RATE_BIN_MASK;
-    }
-
     function _prepareBin(SlotCache memory cache, uint256 binIdx) internal returns (uint256 oldValue, uint256 off) {
         uint256 binIdxInWindow = binIdx % RATE_BINS;
         uint256 slotIdx = binIdxInWindow / RATE_BINS_PER_SLOT;
@@ -76,6 +65,13 @@ contract RateLimiter {
         uint256 idxInSlot = binIdxInWindow % RATE_BINS_PER_SLOT;
         off = idxInSlot * RATE_BIN_BYTES * 8;
         oldValue = (cache.slotValue >> off) & RATE_BIN_MASK;
+    }
+
+    // Get a bin value and use cache if hit.  If not hit, evict the cache, and read a new one from storage.
+    // The cache must contain valid values.
+    function _getBinValue(SlotCache memory cache, uint256 binIdx) internal returns (uint256) {
+        (uint256 oldValue, ) = _prepareBin(cache, binIdx);
+        return oldValue;
     }
 
     // Set a bin value and write only to cache if hit.  If not hit, evict the cache, and write to a new cache loaded from storage.
