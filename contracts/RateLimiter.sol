@@ -69,21 +69,40 @@ contract RateLimiter {
         return (cache.slotValue >> (idxInSlot * RATE_BIN_BYTES * 8)) & RATE_BIN_MASK;
     }
 
+    function _prepareBin(SlotCache memory cache, uint256 binIdx) internal returns (uint256 oldValue, uint256 off) {
+        uint256 binIdxInWindow = binIdx % RATE_BINS;
+        uint256 slotIdx = binIdxInWindow / RATE_BINS_PER_SLOT;
+        _flushIfEvicted(cache, slotIdx);
+        uint256 idxInSlot = binIdxInWindow % RATE_BINS_PER_SLOT;
+        off = idxInSlot * RATE_BIN_BYTES * 8;
+        oldValue = (cache.slotValue >> off) & RATE_BIN_MASK;
+    }
+
     // Set a bin value and write only to cache if hit.  If not hit, evict the cache, and write to a new cache loaded from storage.
+    // The cache must contain valid values.
     function _setBinValue(
         SlotCache memory cache,
         uint256 binIdx,
         uint256 value
     ) internal returns (uint256) {
         require(value <= RATE_BIN_MAX_VALUE, "value too big");
-        uint256 binIdxInWindow = binIdx % RATE_BINS;
-        uint256 slotIdx = binIdxInWindow / RATE_BINS_PER_SLOT;
-        _flushIfEvicted(cache, slotIdx);
 
-        uint256 idxInSlot = binIdxInWindow % RATE_BINS_PER_SLOT;
-        uint256 off = idxInSlot * RATE_BIN_BYTES * 8;
-        uint256 oldValue = (cache.slotValue >> off) & RATE_BIN_MASK;
+        (uint256 oldValue, uint256 off) = _prepareBin(cache, binIdx);
         cache.slotValue = (cache.slotValue & (~(RATE_BIN_MASK << off))) | (value << off);
+        return oldValue;
+    }
+
+    // Add a bin value and write only to cache if hit.  If not hit, evict the cache, and write to a new cache loaded from storage.
+    // The cache must contain valid values.
+    function _addBinValue(
+        SlotCache memory cache,
+        uint256 binIdx,
+        uint256 value
+    ) internal returns (uint256) {
+        (uint256 oldValue, uint256 off) = _prepareBin(cache, binIdx);
+        uint256 newValue = oldValue + value;
+        require(newValue <= RATE_BIN_MAX_VALUE, "value too big");
+        cache.slotValue = (cache.slotValue & (~(RATE_BIN_MASK << off))) | (newValue << off);
         return oldValue;
     }
 
@@ -127,7 +146,7 @@ contract RateLimiter {
         rate += amount;
         require(rate <= _limit, "limit exceeded");
         _rate = rate;
-        _setBinValue(cache, binIdx, _getBinValue(cache, binIdx) + amount);
+        _addBinValue(cache, binIdx, amount);
         _commitCache(cache);
     }
 }
