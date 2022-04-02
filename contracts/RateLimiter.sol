@@ -15,7 +15,7 @@ contract RateLimiter {
     uint256 internal _limit;
     uint256 internal _rate;
 
-    struct BinCache {
+    struct SlotCache {
         uint256 slotIdx;
         uint256 slotValue;
     }
@@ -31,19 +31,19 @@ contract RateLimiter {
     }
 
     // Get a new cache from a binIdx
-    function _getCache(uint256 binIdx) internal view returns (BinCache memory) {
+    function _getCache(uint256 binIdx) internal view returns (SlotCache memory) {
         uint256 slotIdx = (binIdx % RATE_BINS) / RATE_BINS_PER_SLOT;
 
-        return BinCache({slotIdx: slotIdx, slotValue: _rateSlots[slotIdx]});
+        return SlotCache({slotIdx: slotIdx, slotValue: _rateSlots[slotIdx]});
     }
 
     // Commit the cache to storage.
-    function _commitCache(BinCache memory cache) internal {
+    function _commitCache(SlotCache memory cache) internal {
         _rateSlots[cache.slotIdx] = cache.slotValue;
     }
 
     // Flush the cache if the cache is evicted.
-    function _flushIfEvicted(BinCache memory cache, uint256 newSlotIdx) internal {
+    function _flushIfEvicted(SlotCache memory cache, uint256 newSlotIdx) internal {
         if (newSlotIdx != cache.slotIdx) {
             // commit to storage
             _commitCache(cache);
@@ -55,7 +55,8 @@ contract RateLimiter {
     }
 
     // Get a bin value and use cache if hit.  If not hit, evict the cache, and read a new one from storage.
-    function _getBinValue(BinCache memory cache, uint256 binIdx) internal returns (uint256) {
+    // The cache must contain valid values.
+    function _getBinValue(SlotCache memory cache, uint256 binIdx) internal returns (uint256) {
         uint256 binIdxInWindow = binIdx % RATE_BINS;
         uint256 slotIdx = binIdxInWindow / RATE_BINS_PER_SLOT;
         _flushIfEvicted(cache, slotIdx);
@@ -66,7 +67,7 @@ contract RateLimiter {
 
     // Set a bin value and write only to cache if hit.  If not hit, evict the cache, and write to a new cache loaded from storage.
     function _setBinValue(
-        BinCache memory cache,
+        SlotCache memory cache,
         uint256 binIdx,
         uint256 value
     ) internal returns (uint256) {
@@ -109,7 +110,7 @@ contract RateLimiter {
             _lastBinIdx = binIdx;
         }
 
-        BinCache memory cache = _getCache(_lastBinIdx);
+        SlotCache memory cache = _getCache(_lastBinIdx);
         uint256 rate = _rate;
 
         if (binIdx != _lastBinIdx) {
