@@ -2,13 +2,12 @@
 pragma solidity ^0.8.0;
 
 contract RateLimiter {
-    uint256 public constant RATE_UNIT = 1e18;
     uint256 public immutable RATE_BIN_DURATION;
     uint256 public immutable RATE_BINS;
-    uint256 public constant RATE_BIN_BYTES = 4;
-    uint256 public constant RATE_BIN_MAX_VALUE = (1 << (RATE_BIN_BYTES * 8)) - 1;
-    uint256 public constant RATE_BIN_MASK = (1 << (RATE_BIN_BYTES * 8)) - 1;
-    uint256 public constant RATE_BINS_PER_SLOT = 32 / RATE_BIN_BYTES;
+    uint256 public immutable RATE_BIN_BYTES;
+    uint256 public immutable RATE_BIN_MAX_VALUE;
+    uint256 public immutable RATE_BIN_MASK;
+    uint256 public immutable RATE_BINS_PER_SLOT;
 
     mapping(uint256 => uint256) private _rateSlots;
     uint256 private _lastBinIdx;
@@ -23,10 +22,15 @@ contract RateLimiter {
     constructor(
         uint256 bins,
         uint256 binDuration,
+        uint256 binBytes,
         uint256 limit
     ) {
         RATE_BINS = bins;
         RATE_BIN_DURATION = binDuration;
+        RATE_BIN_BYTES = binBytes;
+        RATE_BIN_MAX_VALUE = (1 << (RATE_BIN_BYTES * 8)) - 1;
+        RATE_BIN_MASK = RATE_BIN_MAX_VALUE;
+        RATE_BINS_PER_SLOT = 32 / RATE_BIN_BYTES;
         _limit = limit;
     }
 
@@ -102,7 +106,6 @@ contract RateLimiter {
     // Check if consuming amount will exceed rate limit.  Update rate accordingly.
     function _checkRateLimit(uint256 amount) internal {
         uint256 binIdx = _getTimestamp() / RATE_BIN_DURATION;
-        uint256 amountInUnit = (amount + RATE_UNIT - 1) / RATE_UNIT;
 
         // reset rate if all existing rate bins are expired
         if (binIdx - _lastBinIdx >= RATE_BINS) {
@@ -121,10 +124,10 @@ contract RateLimiter {
             _lastBinIdx = binIdx;
         }
 
-        rate += amountInUnit;
+        rate += amount;
         require(rate <= _limit, "limit exceeded");
         _rate = rate;
-        _setBinValue(cache, binIdx, _getBinValue(cache, binIdx) + amountInUnit);
+        _setBinValue(cache, binIdx, _getBinValue(cache, binIdx) + amount);
         _commitCache(cache);
     }
 }
