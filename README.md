@@ -32,3 +32,6 @@ It further provides the following internal methods:
 
 # Gas Cost
 The average gas cost is about 20000.  May be higher if the contract is not called for a while.
+
+# Audit
+The code is not audited.  USE AT YOUR OWN RISK!
