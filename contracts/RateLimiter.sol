@@ -25,12 +25,12 @@ contract RateLimiter {
         uint256 binBytes,
         uint256 limit
     ) {
-        RATE_BINS = bins; // Bin数量
-        RATE_BIN_DURATION = binDuration; // 每个Bin的周期
+        RATE_BINS = bins;
+        RATE_BIN_DURATION = binDuration;
         RATE_BIN_BYTES = binBytes;
         RATE_BIN_MAX_VALUE = (1 << (RATE_BIN_BYTES * 8)) - 1;
         RATE_BIN_MASK = RATE_BIN_MAX_VALUE;
-        RATE_BINS_PER_SLOT = 32 / RATE_BIN_BYTES;// 每个字可以放几个Bin
+        RATE_BINS_PER_SLOT = 32 / RATE_BIN_BYTES;
         _limit = limit;
     }
 
@@ -59,16 +59,11 @@ contract RateLimiter {
     }
 
     function _prepareBin(SlotCache memory cache, uint256 binIdx) internal returns (uint256 oldValue, uint256 off) {
-        // 
         uint256 binIdxInWindow = binIdx % RATE_BINS;
-        // 在哪一个slot
         uint256 slotIdx = binIdxInWindow / RATE_BINS_PER_SLOT;
-        // 判断是否需要更新cache
         _flushIfEvicted(cache, slotIdx);
-        // 在slot中的具体位置
         uint256 idxInSlot = binIdxInWindow % RATE_BINS_PER_SLOT;
         off = idxInSlot * RATE_BIN_BYTES * 8;
-        // 偏移之后，在slot中拿到真正的值
         oldValue = (cache.slotValue >> off) & RATE_BIN_MASK;
     }
 
@@ -136,11 +131,9 @@ contract RateLimiter {
         SlotCache memory cache = _getCache(_lastBinIdx);
         uint256 rate = _rate;
 
-        // [_lastBindIdx ,binIdx ]之间设计的slot全部设置为0
         if (binIdx != _lastBinIdx) {
             for (uint256 idx = _lastBinIdx + 1; idx <= binIdx; idx++) {
                 uint256 oldValue = _setBinValue(cache, idx, 0);
-                // 不懂
                 rate -= oldValue;
             }
             _lastBinIdx = binIdx;
