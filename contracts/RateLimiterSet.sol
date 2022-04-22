@@ -30,17 +30,17 @@ contract RateLimiterSet {
         RATE_BINS = bins;
         RATE_BIN_DURATION = binDuration;
         RATE_BIN_BYTES = binBytes;
-        RATE_BIN_MAX_VALUE = (1 << (RATE_BIN_BYTES * 8)) - 1;
-        RATE_BIN_MASK = RATE_BIN_MAX_VALUE;
-        RATE_BINS_PER_SLOT = 32 / RATE_BIN_BYTES;
+        RATE_BIN_MAX_VALUE = (1 << (binBytes * 8)) - 1;
+        RATE_BIN_MASK = (1 << (binBytes * 8)) - 1;
+        RATE_BINS_PER_SLOT = 32 / binBytes;
     }
 
     function getRate(uint256 _chainId, address _srcToken) external view returns (uint256) {
         return tokenToRateSlots[_chainId][_srcToken].rate;
     }
 
-    function getRateLimit(uint256 chainId, address srcToken) external view returns (uint256) {
-        return tokenToRateSlots[chainId][srcToken].limit;
+    function getLimit(uint256 _chainId, address _srcToken) external view returns (uint256) {
+        return tokenToRateSlots[_chainId][_srcToken].limit;
     }
 
     // Get a new cache from a binIdx
@@ -149,6 +149,10 @@ contract RateLimiterSet {
         address srcToken
     ) internal {
         tokenToRateSlots[chainId][srcToken].limit = limit;
+    }
+
+    function getRateLimit(uint256 chainId, address srcToken) public view returns (uint256) {
+        return tokenToRateSlots[chainId][srcToken].limit;
     }
 
     function _resetRate(uint256 chainId, address srcToken) internal {

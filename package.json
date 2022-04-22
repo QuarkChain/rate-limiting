@@ -1,6 +1,6 @@
 {
-  "name": "evm-large-storage",
-  "version": "1.0.0",
+  "name": "rate-limiting",
+  "version": "1.0.1",
   "main": "index.js",
   "license": "MIT",
   "devDependencies": {
